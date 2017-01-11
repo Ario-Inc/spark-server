@@ -7,36 +7,17 @@ import type {
   Middleware,
   NextFunction,
 } from 'express';
-import type { EventPublisher, DeviceServer } from 'spark-protocol';
-import type { Settings } from './types';
+import type {Container} from 'constitute';
+import type {Settings} from './types';
 
 import bodyParser from 'body-parser';
 import express from 'express';
 import morgan from 'morgan';
-
-// Repositories
-import DeviceRepository from './repository/DeviceRepository';
-import {
-  DeviceAttributeFileRepository,
-  DeviceKeyFileRepository,
-} from 'spark-protocol';
-
-// Managers
-import EventManager from './managers/EventManager';
-
-// Routing
 import routeConfig from './RouteConfig';
-import DeviceClaimsController from './controllers/DeviceClaimsController';
-import DevicesController from './controllers/DevicesController';
-import EventsController from './controllers/EventsController';
-import ProvisioningController from './controllers/ProvisioningController';
-import UsersController from './controllers/UsersController';
-import WebhooksController from './controllers/WebhooksController';
 
 export default (
+  container: Container,
   settings: Settings,
-  deviceServer: DeviceServer,
-  eventPublisher: EventPublisher,
 ): $Application => {
   const app = express();
 
@@ -67,30 +48,18 @@ export default (
   app.use(bodyParser.urlencoded({ extended: true }));
   app.use(setCORSHeaders);
 
-  const deviceAttributeRepository = new DeviceAttributeFileRepository(
-    settings.deviceKeysDir,
-  );
-
-  const deviceRepository = new DeviceRepository(
-    deviceAttributeRepository,
-    settings.deviceFirmwareRepository,
-    new DeviceKeyFileRepository(settings.deviceKeysDir),
-    deviceServer,
-  );
-
-  const eventManager = new EventManager(eventPublisher);
-
   routeConfig(
     app,
+    container,
     [
-      new DeviceClaimsController(deviceRepository),
+      'DeviceClaimsController',
       // to avoid routes collisions EventsController should be placed
       // before DevicesController
-      new EventsController(eventManager),
-      new DevicesController(deviceRepository),
-      new ProvisioningController(deviceRepository),
-      new UsersController(settings.usersRepository),
-      new WebhooksController(settings.webhookRepository),
+      'EventsController',
+      'DevicesController',
+      'ProvisioningController',
+      'UsersController',
+      'WebhooksController',
     ],
     settings,
   );

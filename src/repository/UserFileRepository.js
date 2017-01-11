@@ -44,8 +44,9 @@ class UserFileRepository {
     throw new HttpError('Not implemented');
   };
 
-  update = (user: User): Promise<User> => {
-    throw new HttpError('Not implemented');
+  update = async (model: User): Promise<User> => {
+    this._fileManager.writeFile(`${model.id}.json`, model);
+    return model;
   };
 
   getAll = async (): Promise<Array<User>> =>

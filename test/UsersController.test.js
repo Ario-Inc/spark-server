@@ -4,9 +4,9 @@ import test from 'ava';
 import request from 'supertest-as-promised';
 import ouathClients from '../src/oauthClients.json';
 import app from './setup/testApp';
-import settings from './setup/settings';
+import TestData from './setup/TestData';
 
-const USER_CREDENTIALS: UserCredentials = {
+let USER_CREDENTIALS: UserCredentials = {
   password: 'password',
   username: 'newUser@test.com',
 };
@@ -15,6 +15,7 @@ let user;
 let userToken;
 
 test.serial('should return a new user object', async t => {
+  USER_CREDENTIALS = TestData.getUser();
   const response = await request(app)
     .post('/v1/users')
     .send(USER_CREDENTIALS);
@@ -31,7 +32,7 @@ test.serial('should throw an error if username already in use', async t => {
     .post('/v1/users')
     .send(USER_CREDENTIALS);
   t.is(response.status, 400);
-  t.is(response.body.error, 'user with the username is already exist');
+  t.is(response.body.error, 'user with the username already exists');
 });
 
 test.serial('should login the user', async t => {
@@ -81,6 +82,8 @@ test.serial('should deleteById access token for the user', async t => {
   ));
 });
 
+// Used to get implementations
+const container = app.container;
 test.after.always(async (): Promise<void> => {
-  await settings.usersRepository.deleteById(user.id);
+  await container.constitute('UserRepository').deleteById(user.id);
 });

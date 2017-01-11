@@ -10,10 +10,12 @@ import type {
 } from '../types';
 import type DeviceFirmwareRepository from './DeviceFirmwareFileRepository';
 
-import crypto from 'crypto';
+import fs from 'fs';
 import Moniker from 'moniker';
 import ursa from 'ursa';
 import HttpError from '../lib/HttpError';
+import FirmwareManager from '../managers/FirmwareManager';
+import settings from '../settings';
 
 const NAME_GENERATOR = Moniker.generator([Moniker.adjective, Moniker.noun]);
 
@@ -53,12 +55,6 @@ class DeviceRepository {
       ownerID: userID,
     };
     return await this._deviceAttributeRepository.update(attributesToSave);
-  };
-
-  generateClaimCode = async (userID: string): Promise<string> => {
-    // TODO - we should probably save this to a repository so we can use it in
-    // subsequent requests
-    return crypto.randomBytes(63).toString();
   };
 
   unclaimDevice = async (
@@ -200,6 +196,25 @@ class DeviceRepository {
     const device = this._deviceServer.getDevice(deviceID);
     if (!device) {
       throw new HttpError('Could not get device for ID', 404);
+    }
+
+    // TODO make FirmwareManager stateless
+    const firmwareManager = new FirmwareManager(device.getSystemInformation());
+    const otaUpdateConfig = null; // firmwareManager.getOtaUpdateConfig();
+
+    console.log(otaUpdateConfig);
+
+    if (otaUpdateConfig) {
+      // TODO use a repository instead of just fetching from disk
+      for (var i = 0; i < otaUpdateConfig.length; i++) {
+        const config = otaUpdateConfig[i];
+        const file = fs.readFileSync(
+          settings.BINARIES_DIRECTORY + '/' + config.binaryFileName,
+        );
+        console.log('FLASHING', file.length, config.binaryFileName)
+        await device.flash(file, config.address);
+        await new Promise(resolve => setTimeout(() => resolve(), 2000));
+      };
     }
 
     return await device.flash(file.buffer);

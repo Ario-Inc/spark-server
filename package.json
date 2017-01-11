@@ -28,12 +28,14 @@
   "scripts": {
     "build": "babel ./src --out-dir ./build",
     "build:clean": "rimraf ./build",
+    "update-firmware": "babel-node ./scripts/update-firmware-binaries",
     "lint": "eslint -- .",
+    "postinstall": "npm run update-firmware",
     "prebuild": "npm run build:clean",
     "start": "nodemon --exec babel-node ./src/main.js --watch src --watch ../spark-protocol/dist --ignore data",
     "start:prod": "npm run build && node ./build/main.js",
-    "test": "ava --serial",
-    "test:watch": "ava --watch --serial"
+    "test": "ava",
+    "test:watch": "ava --watch"
   },
   "pre-commit": "test",
   "ava": {
@@ -49,7 +51,9 @@
   },
   "dependencies": {
     "basic-auth-parser": "0.0.2",
+    "binary-version-reader": "^0.5.0",
     "body-parser": "^1.15.2",
+    "constitute": "^1.6.2",
     "express": "^4.14.0",
     "express-oauth-server": "^2.0.0-b1",
     "moment": "*",
@@ -85,10 +89,14 @@
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-sorting": "^0.3.0",
     "flow-bin": "^0.37.0",
+    "github": "^7.3.2",
     "nodemon": "^1.11.0",
     "pre-commit": "^1.2.2",
+    "request": "^2.79.0",
     "rimraf": "^2.5.4",
+    "rmfr": "^1.0.1",
     "supertest": "^2.0.1",
-    "supertest-as-promised": "^4.0.2"
+    "supertest-as-promised": "^4.0.2",
+    "uglifyjs": "^2.4.10"
   }
 }
