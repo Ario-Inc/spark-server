@@ -3,13 +3,30 @@
 import type { File } from 'express';
 import type DeviceFirmwareRepository from './repository/DeviceFirmwareFileRepository';
 
-export type Webhook = WebhookMutator & {
+export type Webhook = {
+  auth?: { password: string, username: string },
   created_at: Date,
+  deviceID?: string,
+  errorResponseTopic?: string,
+  event: string,
+  form?: { [key: string]: Object },
+  headers?: { [key: string]: string },
   id: string,
+  json?: { [key: string]: Object },
+  mydevices?: boolean,
+  noDefaults?: boolean,
+  ownerID: string,
+  productIdOrSlug?: string,
+  query?: { [key: string]: Object },
+  rejectUnauthorized?: boolean,
+  requestType: RequestType,
+  responseTemplate?: string,
+  responseTopic?: string,
+  url: string,
 };
 
 export type WebhookMutator = {
-  auth?: { Authorization: string },
+  auth?: { password: string, username: string },
   deviceID?: string,
   errorResponseTopic?: string,
   event: string,
@@ -37,8 +54,13 @@ export type Client = {
 };
 
 export type DeviceAttributes = {
+  appHash: ?string,
+  currentBuildTarget: string,
   deviceID: string,
+  imei?: string,
   ip: string,
+  isCellular: boolean,
+  last_iccid?: string,
   name: string,
   ownerID: ?string,
   particleProductId: number,
@@ -48,15 +70,16 @@ export type DeviceAttributes = {
 };
 
 export type Event = EventData & {
+  ttl: number,
   publishedAt: Date,
 };
 
 export type EventData = {
-  data: ?Object,
+  data?: string,
   deviceID?: ?string,
   isPublic: boolean,
   name: string,
-  ttl: number,
+  ttl?: number,
   userID?: ?string,
 };
 
@@ -96,7 +119,7 @@ export type Device = DeviceAttributes & {
 };
 
 export type Repository<TModel> = {
-  create: (model: TModel) => Promise<TModel>,
+  create: (model: TModel | $Shape<TModel>) => Promise<TModel>,
   deleteById: (id: string) => Promise<void>,
   getAll: () => Promise<Array<TModel>>,
   getById: (id: string) => Promise<?TModel>,
@@ -105,11 +128,11 @@ export type Repository<TModel> = {
 
 export type UserRepository = Repository<User> & {
   createWithCredentials(credentials: UserCredentials): Promise<User>,
-  deleteAccessToken(user: User, accessToken: string): Promise<void>,
+  deleteAccessToken(userID: string, accessToken: string): Promise<void>,
   getByAccessToken(accessToken: string): Promise<?User>,
   getByUsername(username: string): Promise<?User>,
   isUserNameInUse(username: string): Promise<boolean>,
-  saveAccessToken(userId: string, tokenObject: TokenObject): Promise<void>,
+  saveAccessToken(userID: string, tokenObject: TokenObject): Promise<User>,
   validateLogin(username: string, password: string): Promise<User>,
 };
 
@@ -140,7 +163,7 @@ export type DeviceRepository = {
     deviceID: string,
     userID: string,
     functionName: string,
-    functionArguments: Object,
+    functionArguments: {[key: string]: string},
   ): Promise<*>,
   claimDevice(deviceID: string, userID: string): Promise<DeviceAttributes>,
   flashBinary(deviceID: string, files: File): Promise<*>,

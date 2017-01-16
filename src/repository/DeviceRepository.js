@@ -14,7 +14,6 @@ import fs from 'fs';
 import Moniker from 'moniker';
 import ursa from 'ursa';
 import HttpError from '../lib/HttpError';
-import FirmwareManager from '../managers/FirmwareManager';
 import settings from '../settings';
 
 const NAME_GENERATOR = Moniker.generator([Moniker.adjective, Moniker.noun]);
@@ -41,7 +40,8 @@ class DeviceRepository {
     deviceID: string,
     userID: string,
   ): Promise<DeviceAttributes> => {
-    const deviceAttributes = await this._deviceAttributeRepository.getById(deviceID);
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
 
     if (!deviceAttributes) {
       throw new HttpError('No device found', 404);
@@ -102,7 +102,10 @@ class DeviceRepository {
     };
   };
 
-  getDetailsByID = async (deviceID: string, userID: string): Promise<Device> => {
+  getDetailsByID = async (
+    deviceID: string,
+    userID: string,
+  ): Promise<Device> => {
     const device = this._deviceServer.getDevice(deviceID);
     if (!device) {
       throw new HttpError('No device found', 404);
@@ -155,9 +158,14 @@ class DeviceRepository {
     deviceID: string,
     userID: string,
     functionName: string,
-    functionArguments: Object,
+    functionArguments: {[key: string]: string},
   ): Promise<*> => {
-    if (await !this._deviceAttributeRepository.doesUserHaveAccess(deviceID, userID)) {
+    const doesUserHaveAccess =
+      await this._deviceAttributeRepository.doesUserHaveAccess(
+        deviceID,
+        userID,
+      );
+    if (!doesUserHaveAccess) {
       throw new HttpError('No device found', 404);
     }
 
@@ -176,8 +184,13 @@ class DeviceRepository {
     deviceID: string,
     userID: string,
     varName: string,
-  ): Promise<Object> => {
-    if (!await this._deviceAttributeRepository.doesUserHaveAccess(deviceID, userID)) {
+  ): Promise<*> => {
+    const doesUserHaveAccess =
+      await this._deviceAttributeRepository.doesUserHaveAccess(
+        deviceID,
+        userID,
+      );
+    if (!doesUserHaveAccess) {
       throw new HttpError('No device found', 404);
     }
 
@@ -196,25 +209,6 @@ class DeviceRepository {
     const device = this._deviceServer.getDevice(deviceID);
     if (!device) {
       throw new HttpError('Could not get device for ID', 404);
-    }
-
-    // TODO make FirmwareManager stateless
-    const firmwareManager = new FirmwareManager(device.getSystemInformation());
-    const otaUpdateConfig = null; // firmwareManager.getOtaUpdateConfig();
-
-    console.log(otaUpdateConfig);
-
-    if (otaUpdateConfig) {
-      // TODO use a repository instead of just fetching from disk
-      for (var i = 0; i < otaUpdateConfig.length; i++) {
-        const config = otaUpdateConfig[i];
-        const file = fs.readFileSync(
-          settings.BINARIES_DIRECTORY + '/' + config.binaryFileName,
-        );
-        console.log('FLASHING', file.length, config.binaryFileName)
-        await device.flash(file, config.address);
-        await new Promise(resolve => setTimeout(() => resolve(), 2000));
-      };
     }
 
     return await device.flash(file.buffer);
@@ -302,7 +296,10 @@ class DeviceRepository {
     userID: string,
     name: string,
   ): Promise<DeviceAttributes> => {
-    const attributes = await this._deviceAttributeRepository.getById(deviceID, userID);
+    const attributes = await this._deviceAttributeRepository.getById(
+      deviceID,
+      userID,
+    );
 
     if (!attributes) {
       throw new HttpError('No device found', 404);
