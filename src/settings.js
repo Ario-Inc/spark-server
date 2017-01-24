@@ -20,10 +20,12 @@
 */
 
 const path = require('path');
-
+/* eslint-disable sorting/sort-object-props */
 module.exports = {
+  BUILD_DIRECTORY: path.join(__dirname, './data/build'),
   DEVICE_DIRECTORY: path.join(__dirname, './data/deviceKeys'),
   FIRMWARE_DIRECTORY: path.join(__dirname, './data/knownApps'),
+  FIRMWARE_REPOSITORY_DIRECTORY: path.join(__dirname, '../../spark-firmware'),
   SERVER_KEY_FILENAME: 'default_key.pem',
   SERVER_KEYS_DIRECTORY: path.join(__dirname, './data'),
   USERS_DIRECTORY: path.join(__dirname, './data/users'),
@@ -48,5 +50,5 @@ module.exports = {
   serverKeyPassEnvVar: null,
 
   PORT: 5683,
-  HOST: "localhost",
+  HOST: 'localhost',
 };

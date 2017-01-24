@@ -28,14 +28,17 @@
   "scripts": {
     "build": "babel ./src --out-dir ./build",
     "build:clean": "rimraf ./build",
-    "lint": "eslint -- .",
+    "lint": "eslint --fix -- .",
     "prebuild": "npm run build:clean",
     "start": "nodemon --exec babel-node ./src/main.js --watch src --watch ../spark-protocol/dist --ignore data",
     "start:prod": "npm run build && node ./build/main.js",
     "test": "ava --serial",
     "test:watch": "ava --watch --serial"
   },
-  "pre-commit": "test",
+  "pre-commit": [
+    "lint",
+    "test"
+  ],
   "ava": {
     "verbose": true,
     "babel": "inherit",
@@ -62,6 +65,8 @@
     "morgan": "^1.7.0",
     "multer": "^1.2.1",
     "request": "*",
+    "rimraf": "^2.5.4",
+    "rmfr": "^1.0.1",
     "spark-protocol": "git+https://github.com/Brewskey/spark-protocol.git#dev",
     "ursa": "^0.9.4",
     "uuid": "^3.0.1"

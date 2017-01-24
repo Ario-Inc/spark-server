@@ -1,3 +1,4 @@
+/* eslint-disable */
 import test from 'ava';
 import request from 'supertest-as-promised';
 import ouathClients from '../src/oauthClients.json';
@@ -67,7 +68,6 @@ test('should throw an error for compile source code endpoint', async t => {
     .query({ access_token: userToken });
 
   t.is(response.status, 400);
-  t.is(response.body.error, 'not supported in the current server version');
 });
 
 test.serial('should return device details', async t => {

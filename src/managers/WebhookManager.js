@@ -101,9 +101,9 @@ class WebhookManager {
     const subscriptionID = this._eventPublisher.subscribe(
       webhook.event,
       this._onNewWebhookEvent(webhook),
-      // todo separate filtering for MY_DEVICES and for public/private events
       {
         deviceID: webhook.deviceID,
+        mydevices: webhook.mydevices,
         userID: webhook.ownerID,
       },
     );
@@ -123,13 +123,6 @@ class WebhookManager {
   _onNewWebhookEvent = (webhook: Webhook): (event: Event) => void =>
     (event: Event) => {
       try {
-        if (
-          webhook.mydevices &&
-          webhook.ownerID !== event.userID
-        ) {
-          return;
-        }
-
         const webhookErrorCount =
           this._errorsCountByWebhookID.get(webhook.id) || 0;
 
@@ -140,6 +133,7 @@ class WebhookManager {
 
         this._eventPublisher.publish({
           data: 'Too many errors, webhook disabled',
+          isPublic: false,
           name: this._compileErrorResponseTopic(
             webhook,
             event,
@@ -193,7 +187,7 @@ class WebhookManager {
           ? this._getRequestData(requestFormData, event, webhook.noDefaults)
           : undefined,
         headers: webhook.headers,
-        json: isJsonRequest,
+        json: true,
         method: webhook.requestType,
         qs: requestQuery,
         strictSSL: webhook.rejectUnauthorized,
@@ -205,21 +199,26 @@ class WebhookManager {
         event,
         requestOptions,
       );
+
       if (!responseBody) {
         return;
       }
 
-      // TODO: responseBody is a string/buffer.
-      // We should only render this if it has been converted to a JSON object
-      const responseTemplate = webhook.responseTemplate && hogan
-        .compile(webhook.responseTemplate)
-        .render(responseBody);
+      const isResponseBodyAnObject = responseBody === Object(responseBody);
+
+      const responseTemplate =
+        webhook.responseTemplate && isResponseBodyAnObject && hogan
+          .compile(webhook.responseTemplate)
+          .render(responseBody);
+
+      const responseEventData = responseTemplate || (isResponseBodyAnObject
+        ? JSON.stringify(responseBody)
+        : responseBody);
 
       const chunks = splitBufferIntoChunks(
         Buffer
-          .from(responseTemplate || responseBody)
-          .slice(0, MAX_RESPONSE_MESSAGE_SIZE)
-        ,
+          .from(responseEventData)
+          .slice(0, MAX_RESPONSE_MESSAGE_SIZE),
         MAX_RESPONSE_MESSAGE_CHUNK_SIZE,
       );
 
@@ -230,6 +229,7 @@ class WebhookManager {
 
         this._eventPublisher.publish({
           data: chunk,
+          isPublic: false,
           name: responseEventName,
           userID: event.userID,
         });
@@ -250,19 +250,22 @@ class WebhookManager {
     event: Event,
     requestOptions: RequestOptions,
   ): Promise<*> => new Promise(
-    (resolve, reject) => request(
+    (
+      resolve: (responseBody: string | Buffer | Object) => void,
+      reject: (error: Error) => void,
+    ): void => request(
       requestOptions,
       (
         error: ?Error,
         response: http$IncomingMessage,
         responseBody: string | Buffer | Object,
       ) => {
-        // todo check response.statusCode > 300 also.
-        if (error) {
+        const onResponseError = (errorMessage: ?string) => {
           this._incrementWebhookErrorCounter(webhook.id);
 
           this._eventPublisher.publish({
-            data: error.message,
+            data: errorMessage,
+            isPublic: false,
             name: this._compileErrorResponseTopic(
               webhook,
               event,
@@ -270,12 +273,22 @@ class WebhookManager {
             userID: event.userID,
           });
 
-          reject(error);
+          reject(new Error(errorMessage));
+        };
+
+        if (error) {
+          onResponseError(error.message);
+          return;
+        }
+        if (response.statusCode >= 400) {
+          onResponseError(response.statusMessage);
+          return;
         }
 
         this._resetWebhookErrorCounter(webhook.id);
 
         this._eventPublisher.publish({
+          isPublic: false,
           name: `hook-sent/${event.name}`,
           userID: event.userID,
         });
@@ -330,7 +343,7 @@ class WebhookManager {
 
   _compileJsonTemplate = (template?: ?Object, variables: Object): ?Object => {
     if (!template) {
-      return;
+      return undefined;
     }
 
     const compiledTemplate = this._compileTemplate(
@@ -338,7 +351,7 @@ class WebhookManager {
       variables,
     );
     if (!compiledTemplate) {
-      return;
+      return undefined;
     }
 
     return JSON.parse(compiledTemplate);

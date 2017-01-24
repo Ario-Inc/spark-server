@@ -1,7 +1,6 @@
 // @flow
 
 import type { File } from 'express';
-import type DeviceFirmwareRepository from './repository/DeviceFirmwareFileRepository';
 
 export type Webhook = {
   auth?: { password: string, username: string },
@@ -80,7 +79,7 @@ export type EventData = {
   isPublic: boolean,
   name: string,
   ttl?: number,
-  userID?: ?string,
+  userID: string,
 };
 
 export type GrantType =
@@ -179,13 +178,26 @@ export type DeviceRepository = {
 };
 
 export type RequestOptions = {
-  auth: { password: string, username: string },
+  auth?: { password: string, username: string },
   body: ?Object,
   form: ?Object,
   headers: ?Object,
   json: boolean,
   method: RequestType,
   qs: ?Object,
-  strictSSL: boolean,
+  strictSSL?: boolean,
   url: string,
 };
+
+export type Product = {
+  config_id: string,
+  description: string,
+  hardware_version: string,
+  id: string,
+  name: string,
+  organization: string,
+  product_id: number,
+  requires_activation_codes: boolean,
+  slug: string,
+  type: 'Consumer' | 'Hobbyist' | 'Industrial',
+}

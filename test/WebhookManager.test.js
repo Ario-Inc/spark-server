@@ -9,22 +9,6 @@ import WebhookFileRepository from '../src/repository/WebhookFileRepository';
 import WebhookManager from '../src/managers/WebhookManager';
 import TestData from './setup/TestData';
 
-/*
-auth
-deviceID
-errorResponseTopic
-headers
-mydevices
-noDefaults
-productIdOrSlug
-query
-rejectUnauthorized
-requestType
-responseTemplate
-responseTopic
-url
-*/
-
 const WEBHOOK_BASE = {
   event: 'test-event',
   requestType: 'POST',
@@ -77,7 +61,6 @@ test(
         JSON.stringify(defaultRequestData),
       );
       t.is(requestOptions.headers, undefined);
-      t.is(requestOptions.json, false);
       t.is(requestOptions.method, WEBHOOK_BASE.requestType);
       t.is(requestOptions.qs, undefined);
       t.is(requestOptions.url, WEBHOOK_BASE.url);
@@ -108,7 +91,6 @@ test(
       t.is(requestOptions.body, undefined);
       t.is(requestOptions.form, undefined);
       t.is(requestOptions.headers, undefined);
-      t.is(requestOptions.json, false);
       t.is(requestOptions.method, WEBHOOK_BASE.requestType);
       t.is(requestOptions.qs, undefined);
       t.is(requestOptions.url, WEBHOOK_BASE.url);
@@ -145,7 +127,6 @@ test(
       );
       t.is(requestOptions.form, undefined);
       t.is(requestOptions.headers, undefined);
-      t.is(requestOptions.json, true);
       t.is(requestOptions.method, WEBHOOK_BASE.requestType);
       t.is(requestOptions.qs, undefined);
       t.is(requestOptions.url, WEBHOOK_BASE.url);
@@ -187,7 +168,6 @@ test(
         }),
       );
       t.is(requestOptions.headers, undefined);
-      t.is(requestOptions.json, false);
       t.is(requestOptions.method, WEBHOOK_BASE.requestType);
       t.is(requestOptions.qs, undefined);
       t.is(requestOptions.url, WEBHOOK_BASE.url);
@@ -222,7 +202,6 @@ test(
         JSON.stringify(defaultRequestData),
       );
       t.is(requestOptions.headers, undefined);
-      t.is(requestOptions.json, false);
       t.is(requestOptions.method, WEBHOOK_BASE.requestType);
       t.is(requestOptions.qs, undefined);
       t.is(requestOptions.url, 'https://test.com/123/foobar');
@@ -260,7 +239,6 @@ test(
         JSON.stringify(defaultRequestData),
       );
       t.is(requestOptions.headers, undefined);
-      t.is(requestOptions.json, false);
       t.is(requestOptions.method, WEBHOOK_BASE.requestType);
       t.is(
         JSON.stringify(requestOptions.qs),
@@ -291,6 +269,45 @@ test(
     });
 
     manager.runWebhook(WEBHOOK_BASE, event);
+  },
+);
+
+test(
+  'should set request headers',
+  async t => {
+    const manager =
+      new WebhookManager(t.context.repository, t.context.eventPublisher);
+    const event = getEvent();
+    const webhook = {
+      ...WEBHOOK_BASE,
+      headers: {
+        'Custom-Header-1': '123',
+        'Custom-Header-2': '123',
+      },
+    };
+    const defaultRequestData = getDefaultRequestData(event);
+
+    manager._callWebhook = sinon.spy((
+      webhook: Webhook,
+      event: Event,
+      requestOptions: RequestOptions,
+    ) => {
+      t.is(requestOptions.auth, undefined);
+      t.is(requestOptions.body, undefined);
+      t.is(
+        JSON.stringify(requestOptions.form),
+        JSON.stringify(defaultRequestData),
+      );
+      t.is(
+        requestOptions.headers,
+        webhook.headers,
+      );
+      t.is(requestOptions.method, WEBHOOK_BASE.requestType);
+      t.is(requestOptions.qs, undefined);
+      t.is(requestOptions.url, WEBHOOK_BASE.url);
+    });
+
+    manager.runWebhook(webhook, event);
   },
 );
 
