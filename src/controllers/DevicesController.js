@@ -1,6 +1,6 @@
 // @flow
 
-import type { Device, DeviceRepository } from '../types';
+import type { Device, DeviceManager } from '../types';
 import type { DeviceAPIType } from '../lib/deviceToAPI';
 
 import nullthrows from 'nullthrows';
@@ -18,19 +18,19 @@ type CompileConfig = {
 };
 
 class DevicesController extends Controller {
-  _deviceRepository: DeviceRepository;
+  _deviceManager: DeviceManager;
 
-  constructor(deviceRepository: DeviceRepository) {
+  constructor(deviceManager: DeviceManager) {
     super();
 
-    this._deviceRepository = deviceRepository;
+    this._deviceManager = deviceManager;
   }
 
   @httpVerb('post')
   @route('/v1/devices')
   async claimDevice(postBody: { id: string }): Promise<*> {
     const deviceID = postBody.id;
-    await this._deviceRepository.claimDevice(deviceID, this.user.id);
+    await this._deviceManager.claimDevice(deviceID, this.user.id);
 
     return this.ok({ ok: true });
   }
@@ -64,7 +64,7 @@ class DevicesController extends Controller {
   @httpVerb('delete')
   @route('/v1/devices/:deviceID')
   async unclaimDevice(deviceID: string): Promise<*> {
-    await this._deviceRepository.unclaimDevice(deviceID, this.user.id);
+    await this._deviceManager.unclaimDevice(deviceID, this.user.id);
     return this.ok({ ok: true });
   }
 
@@ -72,7 +72,7 @@ class DevicesController extends Controller {
   @route('/v1/devices')
   async getDevices(): Promise<*> {
     try {
-      const devices = await this._deviceRepository.getAll(this.user.id);
+      const devices = await this._deviceManager.getAll(this.user.id);
       return this.ok(devices.map((device: Device): DeviceAPIType =>
         deviceToAPI(device)),
       );
@@ -85,7 +85,7 @@ class DevicesController extends Controller {
   @httpVerb('get')
   @route('/v1/devices/:deviceID')
   async getDevice(deviceID: string): Promise<*> {
-    const device = await this._deviceRepository.getDetailsByID(
+    const device = await this._deviceManager.getDetailsByID(
       deviceID,
       this.user.id,
     );
@@ -99,7 +99,7 @@ class DevicesController extends Controller {
     varName: string,
   ): Promise<*> {
     try {
-      const varValue = await this._deviceRepository.getVariableValue(
+      const varValue = await this._deviceManager.getVariableValue(
         deviceID,
         this.user.id,
         varName,
@@ -124,22 +124,22 @@ class DevicesController extends Controller {
       app_id?: string,
       name?: string,
       file_type?: 'binary',
-      signal: boolean,
+      signal?: '1' | '0',
     },
   ): Promise<*> {
     // 1 rename device
     if (postBody.name) {
-      const updatedAttributes = await this._deviceRepository.renameDevice(
+      const updatedAttributes = await this._deviceManager.renameDevice(
         deviceID,
         this.user.id,
         postBody.name,
       );
-
       return this.ok({ name: updatedAttributes.name, ok: true });
     }
-    // 2 flash device with known app
+
+    // 2 flash device with known application
     if (postBody.app_id) {
-      const flashStatus = await this._deviceRepository.flashKnownApp(
+      const flashStatus = await this._deviceManager.flashKnownApp(
         deviceID,
         this.user.id,
         postBody.app_id,
@@ -148,25 +148,36 @@ class DevicesController extends Controller {
       return this.ok({ id: deviceID, status: flashStatus });
     }
 
+    // 3 flash device with custom application
+    if (this.request.files && !(this.request.files: any).file) {
+      throw new Error('Firmware file not provided');
+    }
+
     const file =
       this.request.files &&
       (this.request.files: any).file[0];
 
     if (file && file.originalname.endsWith('.bin')) {
-      const flashStatus = await this._deviceRepository
+      const flashStatus = await this._deviceManager
         .flashBinary(deviceID, file);
 
       return this.ok({ id: deviceID, status: flashStatus });
     }
 
+    // 4
     // If signal exists then we want to toggle nyan mode. This just makes the
     // LED change colors.
-    if (!Number.isNaN(postBody.signal)) {
-      await this._deviceRepository.raiseYourHand(
+    if (postBody.signal) {
+      if (!['1', '0'].includes(postBody.signal)) {
+        throw new HttpError('Wrong signal value');
+      }
+
+      await this._deviceManager.raiseYourHand(
         deviceID,
         this.user.id,
         !!parseInt(postBody.signal, 10),
       );
+
       return this.ok({ id: deviceID, ok: true });
     }
 
@@ -181,14 +192,14 @@ class DevicesController extends Controller {
     postBody: Object,
   ): Promise<*> {
     try {
-      const result = await this._deviceRepository.callFunction(
+      const result = await this._deviceManager.callFunction(
         deviceID,
         this.user.id,
         functionName,
         postBody,
       );
 
-      const device = await this._deviceRepository.getByID(
+      const device = await this._deviceManager.getByID(
         deviceID,
         this.user.id,
       );
@@ -198,7 +209,6 @@ class DevicesController extends Controller {
       if (errorMessage.indexOf('Unknown Function') >= 0) {
         throw new HttpError('Function not found', 404);
       }
-      console.log(error);
       throw error;
     }
   }
