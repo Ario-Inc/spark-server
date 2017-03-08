@@ -18,7 +18,7 @@ export type Webhook = {
   productIdOrSlug?: string,
   query?: { [key: string]: Object },
   rejectUnauthorized?: boolean,
-  requestType: RequestType,
+  requestType: string,
   responseTemplate?: string,
   responseTopic?: string,
   url: string,
@@ -38,7 +38,7 @@ export type WebhookMutator = {
   productIdOrSlug?: string,
   query?: { [key: string]: Object },
   rejectUnauthorized?: boolean,
-  requestType: RequestType,
+  requestType: string,
   responseTemplate?: string,
   responseTopic?: string,
   url: string,
@@ -60,6 +60,7 @@ export type DeviceAttributes = {
   ip: string,
   isCellular: boolean,
   last_iccid?: string,
+  lastHeard: Date,
   name: string,
   ownerID: ?string,
   particleProductId: number,
@@ -111,10 +112,9 @@ export type UserCredentials = {
 
 export type Device = DeviceAttributes & {
   connected: boolean,
-  functions?: Array<string>,
+  functions?: ?Array<string>,
   lastFlashedAppName: ?string,
-  lastHeard: ?Date,
-  variables?: Object,
+  variables?: ?Object,
 };
 
 export type Repository<TModel> = {
@@ -136,22 +136,21 @@ export type UserRepository = Repository<User> & {
 };
 
 export type Settings = {
+  ACCESS_TOKEN_LIFETIME: number,
   API_TIMEOUT: number,
+  BUILD_DIRECTORY: string,
+  CRYPTO_SALT: string,
+  DEVICE_DIRECTORY: string,
+  FIRMWARE_DIRECTORY: string,
+  FIRMWARE_REPOSITORY_DIRECTORY: string,
   HOST: string,
+  LOG_REQUESTS: boolean,
+  LOGIN_ROUTE: string,
   PORT: number,
-  accessTokenLifetime: number,
-  baseUrl: string,
-  coreFlashTimeout: number,
-  coreRequestTimeout: number,
-  coreSignalTimeout: number,
-  cryptoSalt: string,
-  isCoreOnlineTimeout: number,
-  loginRoute: string,
-  logRequests: boolean,
-  maxHooksPerDevice: number,
-  maxHooksPerUser: number,
-  serverKeyPassEnvVar: ?string,
-  serverKeyPassFile: ?string,
+  SERVER_KEY_FILENAME: string,
+  SERVER_KEYS_DIRECTORY: string,
+  USERS_DIRECTORY: string,
+  WEBHOOKS_DIRECTORY: string,
 };
 
 export type DeviceAttributeRepository = Repository<DeviceAttributes> & {

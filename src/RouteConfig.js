@@ -62,7 +62,7 @@ export default (
   settings: Settings,
 ) => {
   const oauth = new OAuthServer({
-    accessTokenLifetime: settings.accessTokenLifetime,
+    ACCESS_TOKEN_LIFETIME: settings.ACCESS_TOKEN_LIFETIME,
     allowBearerTokensInQueryString: true,
     model: new OAuthModel(container.constitute('UserRepository')),
   });
@@ -74,7 +74,7 @@ export default (
     ? multer().fields(allowedUploads)
     : multer().any();
 
-  app.post(settings.loginRoute, oauth.token());
+  app.post(settings.LOGIN_ROUTE, oauth.token());
 
   controllers.forEach((controllerName: string) => {
     const controller = container.constitute(controllerName);
@@ -106,14 +106,15 @@ export default (
           const values = argumentNames
             .map((argument: string): string => request.params[argument]);
 
-          const controllerInstance = container.constitute(controllerName);
+          let controllerInstance = container.constitute(controllerName);
 
           // In order parallel requests on the controller, the state
           // (request/response/user) must be added to the controller.
           if (controllerInstance === controller) {
-            throw new Error(
-              '`Transient.with` must be used when binding controllers',
-            );
+            // throw new Error(
+            //   '`Transient.with` must be used when binding controllers',
+            // );
+            controllerInstance = Object.create(controllerInstance);
           }
 
           controllerInstance.request = request;
@@ -136,13 +137,15 @@ export default (
             if (functionResult.then) {
               const result = await Promise.race([
                 functionResult,
-                new Promise(
-                  (resolve: () => void, reject: () => void): number =>
-                    setTimeout(
-                      () => reject(new Error('timeout')),
-                      settings.API_TIMEOUT * 1000,
-                    ),
-                ),
+                !serverSentEvents
+                  ? new Promise(
+                    (resolve: () => void, reject: () => void): number =>
+                      setTimeout(
+                        (): void => reject(new Error('timeout')),
+                        settings.API_TIMEOUT,
+                      ),
+                  )
+                  : null,
               ]);
               response
                 .status(nullthrows(result).status)
@@ -166,9 +169,11 @@ export default (
   });
 
   (app: any).use((
-    error: string,
+    error: Error,
     request: $Request,
     response: $Response,
+    // eslint-disable-next-line no-unused-vars
+    next: NextFunction,
   ) => {
     response
       .status(400)
